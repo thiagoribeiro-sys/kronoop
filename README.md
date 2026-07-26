@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>KronoOP · Sistema de Gestão de Escalas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#FFFFFF;
+  --bg-2:#F5F5F5;
+  --panel:#FFFFFF;
+  --panel-2:#F5F5F5;
+  --border:#E8E8E8;
+  --text:#222222;
+  --text-muted:#767676;
+  --text-faint:#A8A8A8;
+  --wait:#2F80ED;
+  --live:#EE4D2D;
+  --done:#2FAE60;
+  --alert:#D9362E;
+  --suplente:#7C4DFF;
+  --brand:#EE4D2D;
+  --brand-2:#FF8A5B;
+  --brand-ink:#FFFFFF;
+  --radius:12px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+body{min-height:100vh;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.display{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.01em;}
+::selection{background:var(--brand);color:#FFFFFF;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:#DDDDDD;border-radius:4px;}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+
+/* ---------- LOGIN (3D / futurista) ---------- */
+#view-login{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;padding:24px;
+  background:radial-gradient(ellipse at 50% -10%, #FFF3EE 0%, #FFFFFF 55%);
+  transition:opacity .45s ease, transform .45s ease;
+}
+#view-login.leaving{opacity:0;transform:scale(0.97) translateY(-8px);}
+.grid-floor{position:absolute;left:0;right:0;bottom:0;height:60%;perspective:600px;overflow:hidden;z-index:0;pointer-events:none;}
+.grid-floor .plane{
+  position:absolute;inset:0;transform:rotateX(62deg);transform-origin:bottom;
+  background-image:
+    linear-gradient(rgba(238,77,45,0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(238,77,45,0.14) 1px, transparent 1px);
+  background-size:44px 44px;
+  animation:gridScroll 6s linear infinite;
+}
+@keyframes gridScroll{ from{background-position:0 0;} to{background-position:0 88px;} }
+.glow-orb{position:absolute;border-radius:50%;filter:blur(50px);opacity:0.35;z-index:0;}
+.orb-1{width:260px;height:260px;background:var(--brand);top:-60px;left:-60px;}
+.orb-2{width:220px;height:220px;background:var(--wait);bottom:-40px;right:-40px;opacity:0.18;}
+.login-card{
+  position:relative;z-index:1;width:100%;max-width:420px;
+  background:rgba(255,255,255,0.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,0.9);border-radius:16px;padding:38px 34px;
+  box-shadow:0 30px 70px rgba(20,20,20,0.14), 0 2px 0 rgba(255,255,255,0.9) inset;
+}
+.login-eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--brand);margin-bottom:6px;}
+.login-title{font-size:40px;line-height:1;margin:0 0 4px;background:linear-gradient(90deg,#222,#EE4D2D 130%);-webkit-background-clip:text;background-clip:text;color:transparent;}
+.login-sub{color:var(--text-muted);font-size:13.5px;margin:0 0 28px;}
+.role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;}
+.role-btn{
+  padding:12px 6px;background:var(--panel-2);border:1px solid var(--border);border-radius:10px;
+  color:var(--text-muted);font-size:12.5px;text-align:center;transition:all .15s;
+}
+.role-btn.active{background:rgba(238,77,45,0.1);border-color:var(--brand);color:var(--brand);box-shadow:0 4px 14px rgba(238,77,45,0.18);}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;color:var(--text-muted);margin-bottom:6px;}
+.field select,.field input{
+  width:100%;padding:11px 12px;background:#FFFFFF;border:1px solid var(--border);
+  border-radius:9px;color:var(--text);font-size:14px;
+}
+.field select:focus,.field input:focus{outline:2px solid var(--brand);outline-offset:1px;}
+.btn-primary{
+  width:100%;padding:12px;background:linear-gradient(135deg,var(--brand),var(--brand-2));border:none;border-radius:9px;
+  color:var(--brand-ink);font-weight:600;font-size:14.5px;margin-top:6px;transition:filter .15s, transform .15s;
+  box-shadow:0 10px 24px rgba(238,77,45,0.3);
+}
+.btn-primary:hover{filter:brightness(1.05);transform:translateY(-1px);}
+.login-hint{margin-top:16px;font-size:11.5px;color:var(--text-faint);text-align:center;}
+.login-error{background:rgba(217,54,46,0.08);border:1px solid rgba(217,54,46,0.35);color:var(--alert);
+  padding:9px 12px;border-radius:7px;font-size:12.5px;margin-bottom:14px;display:none;}
+
+/* ---------- APP SHELL ---------- */
+#view-app{display:none;min-height:100vh;opacity:0;transform:scale(1.02);transition:opacity .4s ease, transform .4s ease;}
+#view-app.entered{opacity:1;transform:scale(1);}
+.shell{display:grid;grid-template-columns:236px 1fr;min-height:100vh;}
+.sidebar{background:var(--bg-2);border-right:1px solid var(--border);padding:22px 14px;display:flex;flex-direction:column;}
+.brand-row{display:flex;align-items:center;gap:8px;padding:0 8px 22px;border-bottom:1px solid var(--border);margin-bottom:18px;}
+.brand-dot{width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%, #FFB199, var(--brand));box-shadow:0 0 10px rgba(238,77,45,0.55);}
+.brand-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:19px;letter-spacing:0.02em;}
+.nav-eyebrow{font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text-faint);padding:0 10px;margin-bottom:8px;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:9px;color:var(--text-muted);
+  font-size:13.5px;margin-bottom:2px;border:1px solid transparent;transition:all .12s;
+}
+.nav-item.active{background:#FFFFFF;color:var(--brand);border-color:var(--border);font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.05);}
+.nav-item:hover:not(.active){background:rgba(0,0,0,0.035);}
+.sidebar-foot{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);}
+.user-chip{padding:0 10px;margin-bottom:10px;}
+.user-name{font-size:13px;font-weight:600;}
+.user-role{font-size:11px;color:var(--text-faint);text-transform:uppercase;letter-spacing:0.08em;}
+.user-sup{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.logout-btn{width:100%;padding:9px;background:transparent;border:1px solid var(--border);border-radius:9px;color:var(--text-muted);font-size:12.5px;}
+.logout-btn:hover{border-color:var(--alert);color:var(--alert);}
+
+.main{padding:28px 34px;overflow-x:hidden;}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+.page-title{font-size:30px;margin:0;}
+.page-desc{color:var(--text-muted);font-size:13px;margin-top:2px;}
+
+/* ---------- SHARED COMPONENTS ---------- */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:0 2px 10px rgba(20,20,20,0.05);transition:box-shadow .15s, transform .15s;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+.stat-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:0 2px 10px rgba(20,20,20,0.05);}
+.stat-num{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:32px;line-height:1;}
+.stat-label{color:var(--text-muted);font-size:12px;margin-top:4px;}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:100px;font-size:11px;font-weight:600;}
+.pill-wait{background:rgba(47,128,237,0.12);color:var(--wait);}
+.pill-live{background:rgba(238,77,45,0.12);color:var(--live);}
+.pill-done{background:rgba(47,174,96,0.12);color:var(--done);}
+.pill-alert{background:rgba(217,54,46,0.12);color:var(--alert);}
+.pill-off{background:rgba(118,118,118,0.1);color:var(--text-muted);}
+.pill-suplente{background:rgba(124,77,255,0.12);color:var(--suplente);}
+.btn{padding:8px 14px;border-radius:8px;font-size:12.5px;border:1px solid var(--border);background:#FFFFFF;color:var(--text);transition:all .12s;}
+.btn:hover{border-color:var(--text-muted);transform:translateY(-1px);}
+.btn-brand{background:linear-gradient(135deg,var(--brand),var(--brand-2));border-color:var(--brand);color:var(--brand-ink);font-weight:600;box-shadow:0 6px 16px rgba(238,77,45,0.25);}
+.btn-danger{color:var(--alert);border-color:rgba(217,54,46,0.3);}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;color:var(--text-faint);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;padding:8px 10px;border-bottom:1px solid var(--border);}
+td{padding:10px 10px;border-bottom:1px solid var(--border);}
+tr:last-child td{border-bottom:none;}
+tr.row-suplente{background:rgba(124,77,255,0.05);}
+.empty{color:var(--text-faint);font-size:13px;padding:30px 10px;text-align:center;}
+.toggle-group{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden;}
+.toggle-group button{padding:7px 16px;background:#FFFFFF;color:var(--text-muted);font-size:12.5px;border:none;}
+.toggle-group button.active{background:var(--brand);color:var(--brand-ink);}
+.modal-bg{position:fixed;inset:0;background:rgba(20,20,20,0.5);display:none;align-items:center;justify-content:center;z-index:50;padding:20px;}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:460px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.2);}
+.modal h3{margin:0 0 16px;font-size:19px;}
+.flash-row{display:flex;gap:14px;overflow-x:auto;padding-bottom:8px;}
+.flash-col{min-width:220px;}
+.flash-time{font-family:'JetBrains Mono',monospace;color:var(--text-faint);font-size:11px;margin-bottom:6px;}
+.flash-card{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:13px 14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(20,20,20,0.05);}
+.flash-card:hover{box-shadow:0 8px 20px rgba(20,20,20,0.09);transform:translateY(-1px);}
+.flash-card.off{border-style:dashed;box-shadow:none;}
+.flash-card.reuniao{border-color:rgba(124,77,255,0.35);background:rgba(124,77,255,0.04);}
+.flash-sigla{font-weight:600;font-size:14.5px;}
+.flash-meta{color:var(--text-muted);font-size:11.5px;margin-top:3px;}
+.flash-cover{font-size:11px;color:var(--suplente);margin-top:6px;font-weight:600;}
+.flash-actions{display:flex;gap:6px;margin-top:10px;}
+.flash-actions button{flex:1;font-size:11px;padding:6px 4px;}
+.msg-item{padding:12px 14px;border-radius:9px;background:var(--panel-2);margin-bottom:8px;border:1px solid var(--border);}
+.msg-meta{font-size:11px;color:var(--text-faint);margin-bottom:4px;}
+.peak-chart{display:flex;align-items:flex-end;gap:4px;height:140px;padding:0 4px;}
+.peak-bar{flex:1;background:linear-gradient(to top,var(--brand),#F6997F);border-radius:3px 3px 0 0;position:relative;min-height:3px;}
+.peak-label{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:10px;color:var(--text-faint);font-family:'JetBrains Mono',monospace;}
+.section-title{font-size:13px;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-faint);margin:0 0 12px;}
+.help-text{font-size:12px;color:var(--text-muted);margin-bottom:14px;}
+.csv-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px;padding:12px 14px;background:var(--bg-2);border:1px solid var(--border);border-radius:9px;}
+.csv-row .csv-label{font-size:12.5px;color:var(--text-muted);margin-right:auto;}
+.filter-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.filter-row select,.filter-row input{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#FFFFFF;color:var(--text);font-size:12.5px;}
+.banner{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;background:rgba(124,77,255,0.08);border:1px solid rgba(124,77,255,0.25);font-size:12.5px;color:var(--text);margin-bottom:18px;}
+.banner b{color:var(--suplente);}
+.candidate-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-radius:9px;margin-bottom:10px;flex-wrap:wrap;}
+.candidate-row .op-tag{font-weight:600;min-width:150px;}
+.candidate-row select{flex:1;min-width:180px;padding:7px 9px;border:1px solid var(--border);border-radius:7px;}
+.jornada-tag{font-size:11px;color:var(--text-muted);}
+@media (max-width:880px){
+  .shell{grid-template-columns:1fr;}
+  .sidebar{position:sticky;top:0;z-index:20;flex-direction:row;align-items:center;padding:12px 14px;overflow-x:auto;}
+  .brand-row{border:none;margin:0;padding:0 10px 0 0;}
+  .sidebar-foot{margin:0;padding:0 0 0 10px;border:none;display:flex;align-items:center;gap:8px;}
+  .user-chip{margin:0;}
+  .nav-eyebrow{display:none;}
+  .nav-item{white-space:nowrap;}
+  .main{padding:18px;}
+  .grid-3,.grid-2{grid-template-columns:1fr;}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="view-login">
+  <div class="grid-floor"><div class="plane"></div></div>
+  <div class="glow-orb orb-1"></div>
+  <div class="glow-orb orb-2"></div>
+  <div class="login-card">
+    <div class="login-eyebrow">KronoOP · Ops Control</div>
+    <h1 class="login-title display">KronoOP</h1>
+    <p class="login-sub">Selecione seu perfil para acessar a operação.</p>
+    <div id="loginError" class="login-error"></div>
+    <div class="role-grid" id="roleGrid">
+      <button class="role-btn active" data-role="analista">Analista</button>
+      <button class="role-btn" data-role="supervisor">Supervisor</button>
+      <button class="role-btn" data-role="coordenador">Coordenador</button>
+    </div>
+    <div class="field">
+      <label>Nome cadastrado</label>
+      <select id="loginName"></select>
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="loginPass" placeholder="••••••••">
+    </div>
+    <button class="btn-primary" id="loginBtn">Entrar</button>
+    <div class="login-hint">Prototipo — senha de demonstração: <span class="mono">demo123</span> para todos os perfis</div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="view-app">
+  <div class="shell">
+    <div class="sidebar">
+      <div class="brand-row">
+        <div class="brand-dot"></div>
+        <div class="brand-name">KronoOP</div>
+      </div>
+      <div id="navEyebrow" class="nav-eyebrow">Menu</div>
+      <div id="navItems"></div>
+      <div class="sidebar-foot">
+        <div class="user-chip">
+          <div class="user-name" id="chipName">—</div>
+          <div class="user-role" id="chipRole">—</div>
+          <div class="user-sup" id="chipSup"></div>
+        </div>
+        <button class="logout-btn" id="logoutBtn">Sair</button>
+      </div>
+    </div>
+    <div class="main" id="mainArea"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal" id="modalBody"></div>
+</div>
+
+<script>
+/* ============================================================
+   KronoOP — protótipo funcional (dados simulados, sem backend real)
+   Persistência: window.storage (shared) simula uma base compartilhada
+   Turno T3: data operacional começa às 18h-23h e termina 00h-06h do dia seguinte
+   ============================================================ */
+
+const STORAGE_KEY = 'kronoop-db-v3';
+const HOURS = ['19:00','20:00','21:00','22:00','23:00','00:00','01:00','02:00','03:00','04:00','05:00','06:00'];
+const WEEKDAYS = ['dom','seg','ter','qua','qui','sex','sab'];
+
+let DB = null;
+let session = null; // {role, userId, name}
+let uiState = {
+  analistaView:'diaria', analistaDate: todayISO(),
+  gradeFilters:{ hora:'all', analista:'all', op:'all', nome:'all', status:'all' },
+  progAnalista:'all', progDate: todayISO(),
+  sugerir: null // {analistaId, data, tipo, items:[{bmId, chosenId}]}
+};
+
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function uid(prefix){ return prefix+'_'+Math.random().toString(36).slice(2,9); }
+
+/* Lógica operacional T3: horas 00-06 são continuação do turno iniciado no dia anterior */
+function hourSortValue(hora){
+  if(!hora) return 0;
+  const h = parseInt(hora.split(':')[0],10);
+  return h < 7 ? h + 24 : h;
+}
+function rangesOverlap(s1,e1,s2,e2){ return s1 < e2 && s2 < e1; }
+
+function seedDB(){
+  const today = new Date();
+  const iso = d => d.toISOString().slice(0,10);
+
+  const jornadaPadrao = { dias:['seg','ter','qua','qui','sex'], horaInicio:'19:00', horaFim:'01:00' };
+
+  const analistas = [
+    {id:'u_ana1', role:'analista', name:'Marina Cordeiro', email:'marina.cordeiro@kronoop.local', pass:'demo123', supervisorId:'u_sup1', active:true, jornada:{...jornadaPadrao}},
+    {id:'u_ana2', role:'analista', name:'Felipe Nogueira', email:'felipe.nogueira@kronoop.local', pass:'demo123', supervisorId:'u_sup1', active:true, jornada:{...jornadaPadrao}},
+    {id:'u_ana3', role:'analista', name:'Bianca Salgado', email:'bianca.salgado@kronoop.local', pass:'demo123', supervisorId:'u_sup1', active:true, jornada:{dias:['ter','qua','qui','sex','sab'], horaInicio:'20:00', horaFim:'02:00'}},
+    {id:'u_ana4', role:'analista', name:'Rodrigo Peixoto', email:'rodrigo.peixoto@kronoop.local', pass:'demo123', supervisorId:'u_sup2', active:true, jornada:{...jornadaPadrao}},
+  ];
+  const supervisores = [
+    {id:'u_sup1', role:'supervisor', name:'Camila Duarte', email:'camila.duarte@kronoop.local', pass:'demo123', coordenadorId:'u_coord1', active:true},
+    {id:'u_sup2', role:'supervisor', name:'Thiago Barros', email:'thiago.barros@kronoop.local', pass:'demo123', coordenadorId:'u_coord1', active:true},
+  ];
+  const coordenadores = [
+    {id:'u_coord1', role:'coordenador', name:'Renata Feitosa', email:'renata.feitosa@kronoop.local', pass:'demo123', active:true},
+  ];
+
+  const bm1 = {id:uid('bm'), analistaId:'u_ana1', operacao:'COL-A', ciclo:'T3', horaInicio:'19:00', horaFim:'23:00', titular:'Marina Cordeiro', dataInicio:iso(today), dataFim:'2026-12-31'};
+  const bm2 = {id:uid('bm'), analistaId:'u_ana1', operacao:'ROT-N1', ciclo:'T3', horaInicio:'23:00', horaFim:'01:00', titular:'Marina Cordeiro', dataInicio:iso(today), dataFim:'2026-12-31'};
+  const bm3 = {id:uid('bm'), analistaId:'u_ana2', operacao:'TRI-01', ciclo:'T3', horaInicio:'19:00', horaFim:'22:00', titular:'Felipe Nogueira', dataInicio:iso(today), dataFim:'2026-12-31'};
+  const bm4 = {id:uid('bm'), analistaId:'u_ana3', operacao:'SEP-EXP', ciclo:'T3', horaInicio:'20:00', horaFim:'00:00', titular:'Bianca Salgado', dataInicio:iso(today), dataFim:'2026-12-31'};
+  const bm5 = {id:uid('bm'), analistaId:'u_ana4', operacao:'ROT-N2', ciclo:'T3', horaInicio:'21:00', horaFim:'01:00', titular:'Rodrigo Peixoto', dataInicio:iso(today), dataFim:'2026-12-31'};
+  const baseMestra = [bm1,bm2,bm3,bm4,bm5];
+
+  // Ausência por OPERAÇÃO: Marina folga hoje, cada uma de suas 2 operações tem um suplente diferente
+  const ausencias = [
+    {id:uid('af'), analistaId:'u_ana1', baseMestraId:bm1.id, operacao:bm1.operacao, ciclo:bm1.ciclo, horaInicio:bm1.horaInicio, horaFim:bm1.horaFim, data:iso(today), tipo:'folga', suplenteId:'u_ana2'},
+    {id:uid('af'), analistaId:'u_ana1', baseMestraId:bm2.id, operacao:bm2.operacao, ciclo:bm2.ciclo, horaInicio:bm2.horaInicio, horaFim:bm2.horaFim, data:iso(today), tipo:'folga', suplenteId:'u_ana3'},
+  ];
+
+  const suplencias = [
+    {id:uid('sp'), operacao:'COL-B', ciclo:'T3', horaInicio:'19:00', horaFim:'23:00', suplente:'Rodrigo Peixoto', dataCobertura:iso(today), analistaOriginalId:'u_ana4'},
+  ];
+
+  const raioX = [
+    {id:uid('rx'), analistaId:'u_ana2', operacao:'TRI-01', hora:'19:00', data:iso(today), status:'com', descricao:'Atraso de 12 min na fila de coleta, roteirizador ajustado manualmente.', ts:Date.now()-3600e3},
+    {id:uid('rx'), analistaId:'u_ana3', operacao:'SEP-EXP', hora:'20:00', data:iso(today), status:'sem', descricao:'', ts:Date.now()-2600e3},
+  ];
+
+  const recados = [
+    {id:uid('rc'), from:'Camila Duarte (Supervisor)', to:'all_ana_u_sup1', texto:'Atenção: revisão de rota SEP-EXP às 22h hoje, favor confirmar leitura.', ts:Date.now()-5400e3, lidoPor:[]},
+  ];
+
+  const reunioes = [
+    {id:uid('rn'), tipo:'grupo', titulo:'Alinhamento semanal da operação', data:iso(today), hora:'19:00', analistaIds:[], supervisorId:'u_sup1', criadoPor:'Camila Duarte'},
+  ];
+
+  const plantoes = [];
+
+  return { users:[...analistas,...supervisores,...coordenadores], baseMestra, suplencias, ausencias, raioX, recados, reunioes, plantoes };
+}
+
+async function loadDB(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, true);
+    if(res && res.value){ DB = JSON.parse(res.value); return; }
+  }catch(e){ /* not found yet */ }
+  DB = seedDB();
+  await saveDB();
+}
+async function saveDB(){
+  try{ await window.storage.set(STORAGE_KEY, JSON.stringify(DB), true); }
+  catch(e){ console.error('storage error', e); }
+}
+
+function usersByRole(role){ return DB.users.filter(u=>u.role===role); }
+function userById(id){ return DB.users.find(u=>u.id===id); }
+function jornadaLabel(u){
+  if(!u.jornada) return '—';
+  const dias = (u.jornada.dias||[]).map(d=>d.charAt(0).toUpperCase()+d.slice(1)).join('/');
+  return `${dias||'—'} · ${u.jornada.horaInicio}–${u.jornada.horaFim}`;
+}
+
+/* ---------------- LOGIN ---------------- */
+function populateLoginNames(role){
+  const sel = document.getElementById('loginName');
+  const list = usersByRole(role).filter(u=>u.active);
+  sel.innerHTML = list.map(u=>`<option value="${u.id}">${u.name}</option>`).join('') || '<option value="">Nenhum cadastrado</option>';
+}
+
+function initLogin(){
+  let currentRole = 'analista';
+  populateLoginNames(currentRole);
+  document.getElementById('roleGrid').addEventListener('click', e=>{
+    const btn = e.target.closest('.role-btn'); if(!btn) return;
+    document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentRole = btn.dataset.role;
+    populateLoginNames(currentRole);
+  });
+  document.getElementById('loginBtn').addEventListener('click', ()=>{
+    const id = document.getElementById('loginName').value;
+    const pass = document.getElementById('loginPass').value;
+    const errEl = document.getElementById('loginError');
+    const u = userById(id);
+    if(!u || u.pass !== pass){
+      errEl.textContent = 'Credenciais inválidas. Verifique o nome e a senha.';
+      errEl.style.display='block';
+      return;
+    }
+    errEl.style.display='none';
+    session = { role:u.role, userId:u.id, name:u.name };
+    enterApp();
+  });
+}
+
+/* ---------------- APP SHELL (com transição) ---------------- */
+function enterApp(){
+  const loginEl = document.getElementById('view-login');
+  const appEl = document.getElementById('view-app');
+  loginEl.classList.add('leaving');
+  setTimeout(()=>{
+    loginEl.style.display='none';
+    appEl.style.display='block';
+    document.getElementById('chipName').textContent = session.name;
+    document.getElementById('chipRole').textContent = session.role;
+    const chipSup = document.getElementById('chipSup');
+    if(session.role==='analista'){
+      const me = userById(session.userId);
+      const sup = userById(me.supervisorId);
+      chipSup.textContent = sup ? `Supervisor: ${sup.name}` : '';
+    } else { chipSup.textContent=''; }
+    buildNav();
+    renderMain();
+    requestAnimationFrame(()=> appEl.classList.add('entered'));
+  }, 420);
+}
+function exitApp(){
+  session = null;
+  const loginEl = document.getElementById('view-login');
+  const appEl = document.getElementById('view-app');
+  appEl.classList.remove('entered');
+  appEl.style.display='none';
+  loginEl.style.display='flex';
+  loginEl.classList.remove('leaving');
+  document.getElementById('loginPass').value='';
+}
+document.getElementById('logoutBtn').addEventListener('click', exitApp);
+
+const NAV = {
+  analista:[ {k:'flashcards', label:'Programação'}, {k:'recados', label:'Recados'} ],
+  supervisor:[ {k:'cadastros', label:'Cadastros'}, {k:'basemestra', label:'Base Mestra'}, {k:'suplencias', label:'Suplências'}, {k:'sugerir', label:'Sugerir Suplente'}, {k:'programacao', label:'Programação'}, {k:'grade', label:'Grade do Dia'}, {k:'reunioes', label:'Reuniões'}, {k:'plantao', label:'Plantão'}, {k:'metricas', label:'Métricas'}, {k:'transmissao', label:'Transmissão'}, {k:'ocorrencias', label:'Ocorrências'} ],
+  coordenador:[ {k:'acessos', label:'Gestão de Acessos'}, {k:'dashboard', label:'Dashboard Global'}, {k:'comunicados', label:'Comunicados'}, {k:'painel', label:'Painel Hora a Hora'}, {k:'status', label:'Status Operacional'}, {k:'anomalias', label:'Ocorrências'} ],
+};
+let activeNavKey = null;
+
+function buildNav(){
+  const items = NAV[session.role];
+  activeNavKey = items[0].k;
+  document.getElementById('navEyebrow').textContent = session.role==='analista'?'Analista':session.role==='supervisor'?'Supervisor':'Coordenador';
+  const el = document.getElementById('navItems');
+  el.innerHTML = items.map(it=>`<div class="nav-item ${it.k===activeNavKey?'active':''}" data-k="${it.k}">${it.label}</div>`).join('');
+  el.onclick = e=>{
+    const item = e.target.closest('.nav-item'); if(!item) return;
+    activeNavKey = item.dataset.k;
+    el.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active', n.dataset.k===activeNavKey));
+    renderMain();
+  };
+}
+
+function renderMain(){
+  const main = document.getElementById('mainArea');
+  if(session.role==='analista') main.innerHTML = (activeNavKey==='recados') ? renderRecadosAnalista() : renderAnalista();
+  if(session.role==='supervisor') main.innerHTML = renderSupervisor();
+  if(session.role==='coordenador') main.innerHTML = renderCoordenador();
+  bindMainEvents();
+}
+
+/* ---------------- MODAL HELPERS ---------------- */
+function openModal(html){
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalBg').style.display='flex';
+}
+function closeModal(){ document.getElementById('modalBg').style.display='none'; }
+document.getElementById('modalBg').addEventListener('click', e=>{ if(e.target.id==='modalBg') closeModal(); });
+
+/* ================= STATUS / SLOTS (lógica T3) ================= */
+function computeStatus(horaInicio, horaFim, dataStr){
+  const isToday = dataStr === todayISO();
+  if(!isToday) return dataStr < todayISO() ? 'done' : 'wait';
+  const now = new Date();
+  const nowH = now.getHours() + now.getMinutes()/60;
+  
+  const startSlot = hourSortValue(horaInicio);
+  const endSlot = hourSortValue(horaFim);
+  const effNow = nowH < 18 ? nowH + 24 : nowH;
+
+  if(effNow < startSlot) return 'wait';
+  if(effNow >= startSlot && effNow < endSlot) return 'live';
+  return 'done';
+}
+function statusPill(status){
+  const map = { wait:['pill-wait','⏳ A Iniciar'], live:['pill-live','🏃 Em Andamento'], done:['pill-done','✅ Finalizada'], off:['pill-off','🌙 Ausente'] };
+  const [cls,label] = map[status] || map.wait;
+  return `<span class="pill ${cls}">${label}</span>`;
+}
+
+/* Retorna um slot por OPERAÇÃO do titular naquela data — cada operação pode ter um suplente diferente */
+function getDaySlots(analistaId, dateStr){
+  const bmEntries = DB.baseMestra.filter(b=>b.analistaId===analistaId && dateStr>=b.dataInicio && dateStr<=b.dataFim);
+  const slots = bmEntries.map(bm=>{
+    const aus = DB.ausencias.find(a=>a.baseMestraId===bm.id && a.data===dateStr);
+    if(aus){
+      const sup = userById(aus.suplenteId);
+      return {...bm, isOff:true, tipo:aus.tipo, responsavelNome: sup?.name || aus.suplenteNome || '—', responsavelId: aus.suplenteId||null, isSuplente:true};
+    }
+    return {...bm, isOff:false, responsavelNome: bm.titular, responsavelId: bm.analistaId, isSuplente:false};
+  });
+  // coberturas avulsas (não ligadas a uma folga específica na base mestra)
+  const adhoc = DB.suplencias.filter(s=>s.analistaOriginalId===analistaId && s.dataCobertura===dateStr)
+    .map(s=>({id:s.id, operacao:s.operacao, ciclo:s.ciclo, horaInicio:s.horaInicio, horaFim:s.horaFim, isOff:true, tipo:'cobertura', responsavelNome:s.suplente, responsavelId:null, isSuplente:true}));
+  return [...slots, ...adhoc].sort((a,b)=> hourSortValue(a.horaInicio)-hourSortValue(b.horaInicio));
+}
+function getReunioesForDate(analistaId, dateStr){
+  const me = userById(analistaId);
+  return DB.reunioes.filter(r=> r.data===dateStr && r.supervisorId===me.supervisorId &&
+    (r.tipo==='grupo' ? (r.analistaIds.length===0 || r.analistaIds.includes(analistaId)) : r.analistaIds.includes(analistaId)));
+}
+function plantaoBannerFor(analistaId, dateStr){
+  const me = userById(analistaId);
+  const pl = DB.plantoes.find(p=>p.supervisorAusenteId===me.supervisorId && p.data===dateStr);
+  if(!pl) return '';
+  const sup = userById(me.supervisorId);
+  return `<div class="banner">🔔 Seu supervisor <b>${sup?.name||''}</b> está ausente nesta data. Plantão: <b>${pl.coberturaNome}</b> (${pl.coberturaRole}).</div>`;
+}
+
+/* ================= ANALISTA ================= */
+function renderFlashcardRow(analistaId, dateStr){
+  const slots = getDaySlots(analistaId, dateStr);
+  const reunioes = getReunioesForDate(analistaId, dateStr);
+  return `<div class="flash-row">` + HOURS.map(hour=>{
+    const items = slots.filter(s=>s.horaInicio===hour);
+    const rns = reunioes.filter(r=>r.hora===hour);
+    if(items.length===0 && rns.length===0){
+      return `<div class="flash-col"><div class="flash-time">${hour}</div><div class="flash-card off"><div style="color:var(--text-faint);font-size:12px;">Sem operação</div></div></div>`;
+    }
+    let cardsHtml = items.map(it=>{
+      const status = computeStatus(it.horaInicio, it.horaFim, dateStr);
+      return `<div class="flash-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;">
+          <span class="flash-sigla">${it.operacao}</span>${statusPill(status)}
+        </div>
+        <div class="flash-meta">${it.ciclo} · ${it.horaInicio}–${it.horaFim}</div>
+        <div class="flash-meta">${it.isSuplente ? 'Suplente' : 'Titular'}: ${it.responsavelNome}</div>
+        ${it.isOff ? `<div class="flash-cover">${it.tipo==='ferias'?'🏖️ Férias':'🌙 Folga'} do titular</div>` : ''}
+        ${!it.isOff && analistaId===session?.userId ? `<div class="flash-actions">
+            <button class="btn" data-raiox="sem" data-op="${it.operacao}" data-hora="${it.horaInicio}">Sem Ocorrência</button>
+            <button class="btn btn-danger" data-raiox="com" data-op="${it.operacao}" data-hora="${it.horaInicio}">Com Ocorrência</button>
+          </div>` : ''}
+      </div>`;
+    }).join('');
+    cardsHtml += rns.map(r=>`<div class="flash-card reuniao">
+      <div class="flash-sigla">📅 Reunião</div>
+      <div class="flash-meta">${r.titulo}</div>
+      <div class="flash-meta">${r.tipo==='grupo'?'Grupo':'Individual'} · ${r.hora}</div>
+    </div>`).join('');
+    return `<div class="flash-col"><div class="flash-time">${hour}</div>${cardsHtml}</div>`;
+  }).join('') + `</div>`;
+}
+
+function renderAnalista(){
+  const dateStr = uiState.analistaDate;
+
+  let coberturas=0, folgas=0;
+  const d0 = new Date(dateStr);
+  for(let i=-3;i<=3;i++){
+    const dd = new Date(d0); dd.setDate(dd.getDate()+i); const ds = dd.toISOString().slice(0,10);
+    const slots = getDaySlots(session.userId, ds);
+    if(slots.some(s=>s.isOff)) folgas++;
+  }
+  coberturas = DB.ausencias.filter(a=>a.suplenteId===session.userId).length + DB.suplencias.filter(s=>s.suplente===session.name).length;
+  const todaySlots = getDaySlots(session.userId, dateStr);
+
+  return `
+  ${plantaoBannerFor(session.userId, dateStr)}
+  <div class="page-head">
+    <div>
+      <h1 class="page-title">Programação</h1>
+      <div class="page-desc">Flashcards da sua rota — visão ${uiState.analistaView==='diaria'?'diária':'semanal'}</div>
+    </div>
+    <div class="toggle-group">
+      <button data-view="diaria" class="${uiState.analistaView==='diaria'?'active':''}">Diária</button>
+      <button data-view="semanal" class="${uiState.analistaView==='semanal'?'active':''}">Semanal</button>
+    </div>
+  </div>
+  <div class="grid-3" style="margin-bottom:22px;">
+    <div class="stat-card"><div class="stat-num">${todaySlots.length}</div><div class="stat-label">Operações hoje</div></div>
+    <div class="stat-card"><div class="stat-num">${coberturas}</div><div class="stat-label">Coberturas feitas (total)</div></div>
+    <div class="stat-card"><div class="stat-num">${folgas}</div><div class="stat-label">Dias com folga/férias (7 dias)</div></div>
+  </div>
+  <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+    <input type="date" id="analistaDatePick" value="${dateStr}" class="mono" style="background:var(--bg-2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;">
+  </div>
+  ${uiState.analistaView==='diaria' ? renderFlashcardRow(session.userId, dateStr) : renderAnalistaSemanal()}
+  `;
+}
+
+function renderAnalistaSemanal(){
+  const d0 = new Date(uiState.analistaDate);
+  let cols='';
+  for(let i=0;i<7;i++){
+    const dd=new Date(d0); dd.setDate(dd.getDate()+i); const ds=dd.toISOString().slice(0,10);
+    const slots = getDaySlots(session.userId, ds);
+    const label = dd.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit'});
+    cols += `<div class="flash-col" style="min-width:160px;">
+      <div class="flash-time">${label}</div>
+      ${slots.length===0 ? `<div class="flash-card off"><span style="color:var(--text-faint);font-size:12px;">Sem operação</span></div>`
+      : slots.map(s=>`<div class="flash-card${s.isOff?' off':''}">
+          <div class="flash-sigla" style="font-size:13px;">${s.operacao}</div>
+          <div class="flash-meta">${s.horaInicio}–${s.horaFim}</div>
+          ${s.isOff?`<div class="flash-cover">${s.tipo==='ferias'?'Férias':'Folga'} · cobre: ${s.responsavelNome}</div>`:''}
+        </div>`).join('')}
+    </div>`;
+  }
+  return `<div class="flash-row">${cols}</div>`;
+}
+
+function renderRecadosAnalista(){
+  const my = DB.recados.filter(r=> r.to==='all' || r.to==='all_ana_'+userSupKey(session.userId) || r.to===session.userId);
+  return `
+  <div class="page-head"><div><h1 class="page-title">Recados</h1><div class="page-desc">Mensagens recebidas do seu supervisor ou coordenador</div></div></div>
+  <div class="card">
+  ${my.length===0 ? '<div class="empty">Nenhum recado recebido ainda.</div>' :
+    my.sort((a,b)=>b.ts-a.ts).map(r=>{
+      const lido = (r.lidoPor||[]).includes(session.userId);
+      return `<div class="msg-item">
+        <div class="msg-meta">${r.from} · ${timeAgo(r.ts)}${r.editado?' · editado':''}</div>
+        <div>${escapeHtml(r.texto)}</div>
+        <div style="margin-top:8px;">${lido ? '<span class="pill pill-done">✓ Leitura confirmada</span>' : `<button class="btn" data-confirmar-leitura="${r.id}">Confirmar leitura</button>`}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function userSupKey(userId){ const u=userById(userId); return u.supervisorId; }
+function timeAgo(ts){
+  const min = Math.round((Date.now()-ts)/60000);
+  if(min<60) return `há ${min} min`;
+  const h = Math.round(min/60); if(h<24) return `há ${h}h`;
+  return `há ${Math.round(h/24)}d`;
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ================= SUPERVISOR ================= */
+function renderSupervisor(){
+  const myAnalistas = DB.users.filter(u=>u.role==='analista' && u.supervisorId===session.userId);
+  const tabLabel = NAV.supervisor.find(t=>t.k===activeNavKey)?.label || '';
+  let content='';
+  if(activeNavKey==='cadastros') content = supCadastros(myAnalistas);
+  else if(activeNavKey==='basemestra') content = supBaseMestra(myAnalistas);
+  else if(activeNavKey==='suplencias') content = supSuplencias(myAnalistas);
+  else if(activeNavKey==='sugerir') content = supSugerirSuplente(myAnalistas);
+  else if(activeNavKey==='programacao') content = supProgramacao(myAnalistas);
+  else if(activeNavKey==='grade') content = supGrade(myAnalistas);
+  else if(activeNavKey==='reunioes') content = supReunioes(myAnalistas);
+  else if(activeNavKey==='plantao') content = supPlantao();
+  else if(activeNavKey==='metricas') content = supMetricas(myAnalistas);
+  else if(activeNavKey==='transmissao') content = supTransmissao(myAnalistas);
+  else if(activeNavKey==='ocorrencias') content = supOcorrencias(myAnalistas);
+  return `<div class="page-head"><div><h1 class="page-title">${tabLabel}</h1><div class="page-desc">Gestão da equipe de ${session.name}</div></div></div>${content}`;
+}
+
+function supCadastros(myAnalistas){
+  return `
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+    <button class="btn btn-brand" id="btnNovoAnalista">+ Novo Analista</button>
+  </div>
+  <div class="card">
+    <table><thead><tr><th>Nome</th><th>E-mail</th><th>Jornada de trabalho</th><th>Status</th><th></th></tr></thead><tbody>
+    ${myAnalistas.map(a=>`<tr>
+      <td>${a.name}</td><td class="mono" style="color:var(--text-muted);">${a.email}</td>
+      <td class="jornada-tag">${jornadaLabel(a)}</td>
+      <td>${a.active?'<span class="pill pill-done">Ativo</span>':'<span class="pill pill-off">Inativo</span>'}</td>
+      <td style="text-align:right;"><button class="btn" data-resetpw="${a.id}">Resetar senha</button></td>
+    </tr>`).join('') || '<tr><td colspan="5" class="empty">Nenhum analista cadastrado</td></tr>'}
+    </tbody></table>
+  </div>`;
+}
+
+function supBaseMestra(myAnalistas){
+  const ids = myAnalistas.map(a=>a.id);
+  const rows = DB.baseMestra.filter(b=>ids.includes(b.analistaId));
+  return `
+  <div class="csv-row">
+    <span class="csv-label">Carga em massa das operações do titular (CSV)</span>
+    <button class="btn" id="btnBaixarModeloMestra">⭳ Baixar modelo CSV</button>
+    <label class="btn" style="margin:0;">⭱ Importar CSV<input type="file" accept=".csv" id="fileImportMestra" style="display:none;"></label>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+    <button class="btn btn-brand" id="btnNovaMestra">+ Nova entrada</button>
+  </div>
+  <div class="card">
+  <table><thead><tr><th>Operação</th><th>Ciclo</th><th>Horário</th><th>Titular</th><th>Vigência</th></tr></thead><tbody>
+  ${rows.map(b=>`<tr><td>${b.operacao}</td><td>${b.ciclo}</td><td class="mono">${b.horaInicio}–${b.horaFim}</td><td>${b.titular}</td><td class="mono" style="color:var(--text-muted);">${b.dataInicio} → ${b.dataFim}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Nenhuma entrada na base mestra</td></tr>'}
+  </tbody></table></div>`;
+}
+
+function supSuplencias(myAnalistas){
+  const ids = myAnalistas.map(a=>a.id);
+  const rows = DB.suplencias.filter(s=>ids.includes(s.analistaOriginalId));
+  const ausencias = DB.ausencias.filter(a=>ids.includes(a.analistaId));
+  return `
+  <div class="csv-row">
+    <span class="csv-label">Carga em massa de coberturas avulsas (CSV)</span>
+    <button class="btn" id="btnBaixarModeloSuplencia">⭳ Baixar modelo CSV</button>
+    <label class="btn" style="margin:0;">⭱ Importar CSV<input type="file" accept=".csv" id="fileImportSuplencia" style="display:none;"></label>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+    <button class="btn btn-brand" id="btnNovaSuplencia">+ Nova cobertura avulsa</button>
+  </div>
+  <div class="card" style="margin-bottom:22px;">
+  <table><thead><tr><th>Operação</th><th>Horário</th><th>Suplente</th><th>Cobrindo</th><th>Data</th></tr></thead><tbody>
+  ${rows.map(s=>`<tr><td>${s.operacao}</td><td class="mono">${s.horaInicio}–${s.horaFim}</td><td>${s.suplente}</td><td>${userById(s.analistaOriginalId)?.name||'—'}</td><td class="mono">${s.dataCobertura}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Nenhuma cobertura avulsa registrada</td></tr>'}
+  </tbody></table></div>
+
+  <div class="csv-row">
+    <span class="csv-label">Carga em massa de folgas e férias — por operação (CSV)</span>
+    <button class="btn" id="btnBaixarModeloAusencia">⭳ Baixar modelo CSV</button>
+    <label class="btn" style="margin:0;">⭱ Importar CSV<input type="file" accept=".csv" id="fileImportAusencia" style="display:none;"></label>
+  </div>
+  <div class="help-text">Cada linha do CSV cobre UMA operação de UM analista. Se o titular tiver 3 operações no dia, use 3 linhas (uma por operação), podendo indicar um suplente diferente em cada.</div>
+  <div class="card">
+  <table><thead><tr><th>Analista</th><th>Operação</th><th>Data</th><th>Tipo</th><th>Suplente</th></tr></thead><tbody>
+  ${ausencias.map(a=>`<tr><td>${userById(a.analistaId)?.name||'—'}</td><td>${a.operacao}</td><td class="mono">${a.data}</td><td>${a.tipo==='ferias'?'Férias':'Folga'}</td><td>${userById(a.suplenteId)?.name||a.suplenteNome||'—'}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Nenhuma folga ou férias registrada</td></tr>'}
+  </tbody></table></div>`;
+}
+
+/* ---- Sugerir Suplente ---- */
+function candidatosParaSlot(myAnalistas, titularId, bm, dataStr){
+  const s1 = hourSortValue(bm.horaInicio), e1 = hourSortValue(bm.horaFim);
+  const mesRef = dataStr.slice(0,7);
+  const candidatos = myAnalistas.filter(a=>a.id!==titularId).map(a=>{
+    // Regra: jamais sugerir quem já está de folga na data (em qualquer operação sua)
+    const estaDeFolga = DB.ausencias.some(x=>x.analistaId===a.id && x.data===dataStr);
+    if(estaDeFolga) return null;
+    // ops próprias ativas nessa data, que NÃO estejam cobertas por outro suplente (ele está realmente trabalhando)
+    const opsProprias = DB.baseMestra.filter(b=>b.analistaId===a.id && dataStr>=b.dataInicio && dataStr<=b.dataFim)
+      .filter(b=>!DB.ausencias.some(x=>x.baseMestraId===b.id && x.data===dataStr));
+    // disponibilidade real: nenhuma operação própria pode colidir de horário com o slot a cobrir
+    const conflitaComProprias = opsProprias.some(b=> rangesOverlap(s1,e1, hourSortValue(b.horaInicio), hourSortValue(b.horaFim)));
+    if(conflitaComProprias) return null;
+    // já escalado como suplente em outro horário conflitante nessa mesma data (evita choque)
+    const jaSuplente = DB.ausencias.filter(x=>x.suplenteId===a.id && x.data===dataStr);
+    const conflitaComCoberturas = jaSuplente.some(x=> rangesOverlap(s1,e1, hourSortValue(x.horaInicio), hourSortValue(x.horaFim)));
+    if(conflitaComCoberturas) return null;
+    const coberturasNoMes = DB.ausencias.filter(x=>x.suplenteId===a.id && x.data.slice(0,7)===mesRef).length;
+    return { id:a.id, name:a.name, opsHoje:opsProprias.length, coberturasNoMes };
+  }).filter(Boolean);
+  candidatos.sort((x,y)=> x.opsHoje-y.opsHoje || x.coberturasNoMes-y.coberturasNoMes || x.name.localeCompare(y.name));
+  return candidatos;
+}
+
+function supSugerirSuplente(myAnalistas){
+  const st = uiState.sugerir;
+  let resultsHtml = '';
+  if(st && st.items){
+    resultsHtml = `<div class="card" style="margin-top:18px;">
+      <div class="section-title">Operações de ${userById(st.analistaId)?.name} em ${st.data}</div>
+      ${st.items.length===0 ? '<div class="empty">Este analista não possui operações na base mestra para essa data.</div>' :
+      st.items.map((it,idx)=>{
+        const bm = DB.baseMestra.find(b=>b.id===it.bmId);
+        return `<div class="candidate-row">
+          <span class="op-tag">${bm.operacao} <span class="mono" style="color:var(--text-muted);font-weight:400;">${bm.horaInicio}–${bm.horaFim}</span></span>
+          <select data-sugerir-idx="${idx}">
+            ${it.candidatos.length===0 ? '<option value="">Nenhum suplente disponível</option>' :
+              it.candidatos.map(c=>`<option value="${c.id}" ${it.chosenId===c.id?'selected':''}>${c.name} — ${c.opsHoje} op(s) hoje, ${c.coberturasNoMes} cobertura(s)/mês</option>`).join('')}
+          </select>
+        </div>`;
+      }).join('')}
+      ${st.items.length>0 ? `<div style="display:flex;justify-content:flex-end;margin-top:10px;"><button class="btn btn-brand" id="btnConfirmarSugestao">Confirmar coberturas</button></div>` : ''}
+    </div>`;
+  }
+  return `
+  <div class="help-text">Informe o analista titular e a data da folga. O sistema sugere, para cada operação do dia, o suplente com a jornada livre, priorizando menos operações no dia e menos coberturas no mês.</div>
+  <div class="card">
+    <div class="grid-3">
+      <div class="field" style="margin-bottom:0;"><label>Analista (titular)</label>
+        <select id="sugAnalista">${myAnalistas.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')}</select>
+      </div>
+      <div class="field" style="margin-bottom:0;"><label>Data da folga</label><input type="date" id="sugData" value="${todayISO()}"></div>
+      <div class="field" style="margin-bottom:0;"><label>Tipo</label>
+        <select id="sugTipo"><option value="folga">Folga</option><option value="ferias">Férias</option></select>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-brand" id="btnGerarSugestao">Gerar sugestões</button>
+    </div>
+  </div>
+  ${resultsHtml}`;
+}
+
+function supProgramacao(myAnalistas){
+  return `
+  <div class="filter-row">
+    <select id="progAnalistaSel">
+      <option value="all" ${uiState.progAnalista==='all'?'selected':''}>Todos os analistas</option>
+      ${myAnalistas.map(a=>`<option value="${a.id}" ${uiState.progAnalista===a.id?'selected':''}>${a.name}</option>`).join('')}
+    </select>
+    <input type="date" id="progDateSel" value="${uiState.progDate}">
+  </div>
+  ${ (uiState.progAnalista==='all' ? myAnalistas : myAnalistas.filter(a=>a.id===uiState.progAnalista))
+      .map(a=>`<div style="margin-bottom:22px;"><div class="section-title">${a.name}</div>${renderFlashcardRow(a.id, uiState.progDate)}</div>`).join('')
+    || '<div class="empty">Nenhum analista para exibir</div>' }`;
+}
+
+function supGrade(myAnalistas){
+  const dateStr = todayISO();
+  const ids = myAnalistas.map(a=>a.id);
+  let rows = [];
+  ids.forEach(id=>{
+    const slots = getDaySlots(id, dateStr);
+    slots.forEach(s=>{
+      const status = computeStatus(s.horaInicio, s.horaFim, dateStr);
+      rows.push({analista:userById(id).name, op:s.operacao, hora:s.horaInicio, horaFim:s.horaFim, nome:s.responsavelNome, isSuplente:s.isSuplente, status});
+    });
+  });
+  rows.sort((a,b)=> hourSortValue(a.hora)-hourSortValue(b.hora));
+
+  const f = uiState.gradeFilters;
+  const uniq = key => ['all', ...new Set(rows.map(r=>r[key]).filter(Boolean))];
+  const filtered = rows.filter(r=>
+    (f.hora==='all' || r.hora===f.hora) &&
+    (f.analista==='all' || r.analista===f.analista) &&
+    (f.op==='all' || r.op===f.op) &&
+    (f.nome==='all' || r.nome===f.nome) &&
+    (f.status==='all' || r.status===f.status)
+  );
+  const statusLabels = {wait:'A Iniciar', live:'Em Andamento', done:'Finalizada'};
+
+  const select = (key, label, values) => `
+    <select data-gradefilter="${key}">
+      <option value="all">${label}: todos</option>
+      ${values.filter(v=>v!=='all').map(v=>`<option value="${v}" ${f[key]===v?'selected':''}>${key==='status'?statusLabels[v]:v}</option>`).join('')}
+    </select>`;
+
+  return `
+  <div class="filter-row">
+    ${select('hora','Horário', uniq('hora'))}
+    ${select('analista','Analista', uniq('analista'))}
+    ${select('op','Operação', uniq('op'))}
+    ${select('nome','Responsável', uniq('nome'))}
+    ${select('status','Status', ['all','wait','live','done'])}
+  </div>
+  <div class="card">
+  <table><thead><tr><th>Horário</th><th>Analista</th><th>Operação</th><th>Responsável</th><th>Status</th></tr></thead><tbody>
+  ${filtered.map(r=>`<tr class="${r.isSuplente?'row-suplente':''}"><td class="mono">${r.hora}–${r.horaFim}</td><td>${r.analista}</td><td>${r.op}</td><td>${r.nome} ${r.isSuplente?'<span class="pill pill-suplente">🔁 Suplente</span>':''}</td><td>${statusPill(r.status)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Nenhum registro para os filtros selecionados</td></tr>'}
+  </tbody></table></div>`;
+}
+
+function supReunioes(myAnalistas){
+  const rows = DB.reunioes.filter(r=>r.supervisorId===session.userId).sort((a,b)=> (b.data+b.hora).localeCompare(a.data+a.hora));
+  return `
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px;"><button class="btn btn-brand" id="btnNovaReuniao">+ Nova reunião</button></div>
+  <div class="card">
+  <table><thead><tr><th>Título</th><th>Tipo</th><th>Data</th><th>Hora</th><th>Participantes</th></tr></thead><tbody>
+  ${rows.map(r=>`<tr><td>${r.titulo}</td><td>${r.tipo==='grupo'?'Grupo':'Individual'}</td><td class="mono">${r.data}</td><td class="mono">${r.hora}</td>
+  <td>${r.tipo==='grupo' ? (r.analistaIds.length===0?'Toda a equipe':r.analistaIds.map(id=>userById(id)?.name).join(', ')) : (userById(r.analistaIds[0])?.name||'—')}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Nenhuma reunião agendada</td></tr>'}
+  </tbody></table></div>`;
+}
+
+function supPlantao(){
+  const rows = DB.plantoes.filter(p=>p.supervisorAusenteId===session.userId).sort((a,b)=>b.data.localeCompare(a.data));
+  return `
+  <div class="help-text">Defina quem cobre sua ausência (Supervisor, Analista ou Coordenador) em uma data específica. A informação aparece para os analistas da sua equipe.</div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px;"><button class="btn btn-brand" id="btnNovoPlantao">+ Definir plantão</button></div>
+  <div class="card">
+  <table><thead><tr><th>Data</th><th>Cargo do plantonista</th><th>Nome</th></tr></thead><tbody>
+  ${rows.map(p=>`<tr><td class="mono">${p.data}</td><td>${p.coberturaRole}</td><td>${p.coberturaNome}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Nenhum plantão definido</td></tr>'}
+  </tbody></table></div>`;
+}
+
+function supMetricas(myAnalistas){
+  const ids = myAnalistas.map(a=>a.id);
+  const today = todayISO();
+  const folgaHoje = new Set(DB.ausencias.filter(a=>ids.includes(a.analistaId) && a.data===today).map(a=>a.analistaId)).size;
+  const weekStart = new Date(); weekStart.setDate(weekStart.getDate()-7);
+  const folgaSemana = new Set(DB.ausencias.filter(a=>ids.includes(a.analistaId) && new Date(a.data)>=weekStart).map(a=>a.analistaId+a.data)).size;
+  const opsHoje = DB.baseMestra.filter(b=>ids.includes(b.analistaId) && today>=b.dataInicio && today<=b.dataFim).length;
+  const ranking = ids.map(id=>({name:userById(id).name, count: DB.ausencias.filter(a=>a.suplenteId===id).length + DB.suplencias.filter(s=>s.suplente===userById(id).name).length}))
+    .sort((a,b)=>b.count-a.count);
+  return `
+  <div class="grid-3" style="margin-bottom:20px;">
+    <div class="stat-card"><div class="stat-num">${folgaHoje}</div><div class="stat-label">Analistas com folga hoje</div></div>
+    <div class="stat-card"><div class="stat-num">${folgaSemana}</div><div class="stat-label">Dias de folga nos últimos 7 dias</div></div>
+    <div class="stat-card"><div class="stat-num">${opsHoje}</div><div class="stat-label">Operações ativas hoje</div></div>
+  </div>
+  <div class="card"><div class="section-title">Ranking de coberturas</div>
+  <table><thead><tr><th>Analista</th><th>Coberturas</th></tr></thead><tbody>
+  ${ranking.map(r=>`<tr><td>${r.name}</td><td class="mono">${r.count}</td></tr>`).join('') || '<tr><td colspan="2" class="empty">Sem dados</td></tr>'}
+  </tbody></table></div>`;
+}
+
+function supTransmissao(myAnalistas){
+  const sent = DB.recados.filter(r=>r.from.includes(session.name));
+  return `
+  <div class="card" style="margin-bottom:18px;">
+    <div class="section-title">Novo comunicado</div>
+    <textarea id="transmMsg" rows="3" style="width:100%;background:var(--bg-2);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:10px;font-size:13.5px;" placeholder="Escreva a mensagem para sua equipe..."></textarea>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px;"><button class="btn btn-brand" id="btnEnviarRecado">Enviar para toda a equipe</button></div>
+  </div>
+  <div class="card"><div class="section-title">Enviados</div>
+  ${sent.length===0 ? '<div class="empty">Nenhum comunicado enviado ainda.</div>' : sent.sort((a,b)=>b.ts-a.ts).map(r=>{
+    const lidos = (r.lidoPor||[]).length;
+    return `<div class="msg-item">
+      <div class="msg-meta">${timeAgo(r.ts)}${r.editado?' · editado':''} · ${lidos} leitura(s) confirmada(s)</div>
+      <div>${escapeHtml(r.texto)}</div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn" data-editar-recado="${r.id}">Editar</button>
+        <button class="btn btn-danger" data-excluir-recado="${r.id}">Excluir</button>
+      </div>
+    </div>`;
+  }).join('')}
+  </div>`;
+}
+
+function supOcorrencias(myAnalistas){
+  const ids = myAnalistas.map(a=>a.id);
+  const rows = DB.raioX.filter(r=>ids.includes(r.analistaId)).sort((a,b)=>b.ts-a.ts);
+  return `<div class="card">
+  ${rows.map(r=>`<div class="msg-item">
+    <div class="msg-meta">${userById(r.analistaId)?.name} · ${r.operacao} · ${r.hora} · ${timeAgo(r.ts)}</div>
+    <div>${r.status==='com' ? `<span class="pill pill-alert">Com Ocorrência</span> ${escapeHtml(r.descricao)}` : '<span class="pill pill-done">Sem Ocorrência</span>'}</div>
+  </div>`).join('') || '<div class="empty">Nenhuma ocorrência registrada</div>'}
+  </div>`;
+}
+
+/* ================= COORDENADOR ================= */
+function renderCoordenador(){
+  const tabLabel = NAV.coordenador.find(t=>t.k===activeNavKey)?.label || '';
+  let content='';
+  if(activeNavKey==='acessos') content = coordAcessos();
+  else if(activeNavKey==='dashboard') content = coordDashboard();
+  else if(activeNavKey==='comunicados') content = coordComunicados();
+  else if(activeNavKey==='painel') content = coordPainelHoraAHora();
+  else if(activeNavKey==='status') content = coordStatus();
+  else if(activeNavKey==='anomalias') content = coordAnomalias();
+  return `<div class="page-head"><div><h1 class="page-title">${tabLabel}</h1><div class="page-desc">Visão executiva de toda a operação</div></div></div>${content}`;
+}
+
+function coordComunicados(){
+  const sups = usersByRole('supervisor');
+  const blocks = sups.map(s=>{
+    const msgs = DB.recados.filter(r=>r.from.includes(s.name)).sort((a,b)=>b.ts-a.ts);
+    return `<div class="card" style="margin-bottom:16px;">
+      <div class="section-title">${s.name} — ${DB.users.filter(u=>u.supervisorId===s.id).length} analista(s) na equipe</div>
+      ${msgs.length===0 ? '<div class="empty">Nenhum comunicado enviado por este supervisor.</div>' :
+        msgs.map(r=>`<div class="msg-item"><div class="msg-meta">${timeAgo(r.ts)}${r.editado?' · editado':''}</div><div>${escapeHtml(r.texto)}</div></div>`).join('')}
+    </div>`;
+  }).join('');
+  return blocks || '<div class="empty">Nenhum supervisor cadastrado</div>';
+}
+
+function coordPainelHoraAHora(){
+  const today = todayISO();
+  const supIds = usersByRole('supervisor').map(s=>s.id);
+  const analistaIds = DB.users.filter(u=>u.role==='analista' && supIds.includes(u.supervisorId)).map(u=>u.id);
+  let rows = [];
+  analistaIds.forEach(id=>{
+    const slots = getDaySlots(id, today);
+    slots.forEach(s=>{
+      rows.push({analista:userById(id).name, op:s.operacao, hora:s.horaInicio, horaFim:s.horaFim, nome:s.responsavelNome, isSuplente:s.isSuplente, status:computeStatus(s.horaInicio, s.horaFim, today)});
+    });
+  });
+  rows.sort((a,b)=> hourSortValue(a.hora)-hourSortValue(b.hora));
+  return `<div class="card">
+  <table><thead><tr><th>Horário</th><th>Analista</th><th>Operação</th><th>Responsável</th><th>Status</th></tr></thead><tbody>
+  ${rows.map(r=>`<tr class="${r.isSuplente?'row-suplente':''}"><td class="mono">${r.hora}–${r.horaFim}</td><td>${r.analista}</td><td>${r.op}</td><td>${r.nome} ${r.isSuplente?'<span class="pill pill-suplente">🔁 Suplente</span>':''}</td><td>${statusPill(r.status)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Sem registros para hoje</td></tr>'}
+  </tbody></table></div>`;
+}
+
+function coordAcessos(){
+  const sups = usersByRole('supervisor');
+  return `
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px;"><button class="btn btn-brand" id="btnNovoSupervisor">+ Novo Supervisor</button></div>
+  <div class="card"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Equipe</th><th>Status</th><th></th></tr></thead><tbody>
+  ${sups.map(s=>`<tr><td>${s.name}</td><td class="mono" style="color:var(--text-muted);">${s.email}</td>
+  <td>${DB.users.filter(u=>u.supervisorId===s.id).length} analistas</td>
+  <td>${s.active?'<span class="pill pill-done">Ativo</span>':'<span class="pill pill-off">Inativo</span>'}</td>
+  <td style="text-align:right;"><button class="btn" data-resetpw="${s.id}">Resetar senha</button></td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+
+function coordDashboard(){
+  const totalAnalistas = usersByRole('analista').length;
+  const totalSup = usersByRole('supervisor').length;
+  const today = todayISO();
+  const opsAtivas = DB.baseMestra.filter(b=>today>=b.dataInicio && today<=b.dataFim).length;
+  const folgasHoje = new Set(DB.ausencias.filter(a=>a.data===today).map(a=>a.analistaId)).size;
+  const anomalias = DB.raioX.filter(r=>r.status==='com').length;
+  return `
+  <div class="grid-3" style="margin-bottom:14px;">
+    <div class="stat-card"><div class="stat-num">${totalAnalistas}</div><div class="stat-label">Analistas na base</div></div>
+    <div class="stat-card"><div class="stat-num">${totalSup}</div><div class="stat-label">Supervisores</div></div>
+    <div class="stat-card"><div class="stat-num">${opsAtivas}</div><div class="stat-label">Operações ativas hoje</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="stat-card"><div class="stat-num">${folgasHoje}</div><div class="stat-label">Analistas em folga/férias hoje</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--alert);">${anomalias}</div><div class="stat-label">Ocorrências registradas (Raio-X)</div></div>
+  </div>`;
+}
+
+function coordStatus(){
+  const today = todayISO();
+  let done=0,live=0,wait=0;
+  DB.baseMestra.filter(b=>today>=b.dataInicio && today<=b.dataFim).forEach(b=>{
+    const s = computeStatus(b.horaInicio, b.horaFim, today);
+    if(s==='done') done++; else if(s==='live') live++; else wait++;
+  });
+  const total = done+live+wait || 1;
+  return `<div class="card">
+  <div class="section-title">Andamento global — hoje</div>
+  <div style="display:flex;gap:10px;margin-bottom:16px;">
+    <div style="flex:${wait};background:var(--wait);height:10px;border-radius:5px;"></div>
+    <div style="flex:${live};background:var(--live);height:10px;border-radius:5px;"></div>
+    <div style="flex:${done};background:var(--done);height:10px;border-radius:5px;"></div>
+  </div>
+  <div class="grid-3">
+    <div><span class="pill pill-wait">A Iniciar</span> <span class="mono">${wait}</span></div>
+    <div><span class="pill pill-live">Em Andamento</span> <span class="mono">${live}</span></div>
+    <div><span class="pill pill-done">Finalizada</span> <span class="mono">${done}</span></div>
+  </div>
+  </div>`;
+}
+
+function coordAnomalias(){
+  const rows = [...DB.raioX].sort((a,b)=>b.ts-a.ts);
+  const com = rows.filter(r=>r.status==='com').length;
+  return `
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="stat-card"><div class="stat-num">${rows.length}</div><div class="stat-label">Registros de Raio-X totais</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:var(--alert);">${com}</div><div class="stat-label">Com Ocorrência</div></div>
+  </div>
+  <div class="card">
+  ${rows.map(r=>`<div class="msg-item">
+    <div class="msg-meta">${userById(r.analistaId)?.name} · ${r.operacao} · ${r.data} ${r.hora} · ${timeAgo(r.ts)}</div>
+    <div>${r.status==='com' ? `<span class="pill pill-alert">Com Ocorrência</span><br>${escapeHtml(r.descricao)}` : '<span class="pill pill-done">Sem Ocorrência</span>'}</div>
+  </div>`).join('') || '<div class="empty">Nenhum registro</div>'}
+  </div>`;
+}
+
+/* ---------------- CSV HELPERS ---------------- */
+function downloadCSV(filename, headers, exampleRow){
+  const csv = [headers.join(','), exampleRow.join(',')].join('\n');
+  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function parseCSV(text){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim().length>0);
+  if(lines.length<2) return [];
+  const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+  return lines.slice(1).map(line=>{
+    const cells = line.split(',').map(c=>c.trim().replace(/^"|"$/g,''));
+    const obj = {};
+    headers.forEach((h,i)=>obj[h]=cells[i]||'');
+    return obj;
+  });
+}
+function findAnalistaByName(myAnalistas, name){
+  const n = (name||'').trim().toLowerCase();
+  return myAnalistas.find(a=>a.name.trim().toLowerCase()===n);
+}
+function readFileAsText(file){
+  return new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = ()=>res(r.result);
+    r.onerror = rej;
+    r.readAsText(file, 'utf-8');
+  });
+}
+
+/* ---------------- EVENT BINDING FOR MAIN AREA ---------------- */
+function bindMainEvents(){
+  const main = document.getElementById('mainArea');
+
+  // Analista: confirmar leitura de recado
+  main.querySelectorAll('[data-confirmar-leitura]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const r = DB.recados.find(x=>x.id===btn.dataset.confirmarLeitura);
+      if(r){ r.lidoPor = r.lidoPor||[]; if(!r.lidoPor.includes(session.userId)) r.lidoPor.push(session.userId); saveDB(); renderMain(); }
+    });
+  });
+
+  // Analista: view toggle
+  main.querySelectorAll('.toggle-group [data-view]').forEach(el=>{
+    el.addEventListener('click', ()=>{ uiState.analistaView = el.dataset.view; renderMain(); });
+  });
+  const datePick = document.getElementById('analistaDatePick');
+  if(datePick) datePick.addEventListener('change', ()=>{ uiState.analistaDate = datePick.value; renderMain(); });
+
+  // Analista: raio-x buttons
+  main.querySelectorAll('[data-raiox]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const tipo = btn.dataset.raiox, op = btn.dataset.op, hora = btn.dataset.hora;
+      if(tipo==='sem'){
+        DB.raioX.push({id:uid('rx'), analistaId:session.userId, operacao:op, hora, data:uiState.analistaDate, status:'sem', descricao:'', ts:Date.now()});
+        saveDB(); renderMain();
+      } else {
+        openModal(`
+          <h3>Registrar Ocorrência — ${op} (${hora})</h3>
+          <div class="field"><label>Descrição da ocorrência</label>
+          <textarea id="anomDesc" rows="4" style="width:100%;background:var(--bg-2);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:10px;"></textarea></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button class="btn" onclick="closeModal()">Cancelar</button>
+            <button class="btn btn-brand" id="confirmAnom">Registrar</button>
+          </div>`);
+        document.getElementById('confirmAnom').onclick = ()=>{
+          const desc = document.getElementById('anomDesc').value.trim();
+          DB.raioX.push({id:uid('rx'), analistaId:session.userId, operacao:op, hora, data:uiState.analistaDate, status:'com', descricao:desc||'(sem descrição)', ts:Date.now()});
+          saveDB(); closeModal(); renderMain();
+        };
+      }
+    });
+  });
+
+  // Supervisor: novo analista (com jornada de trabalho)
+  const btnNovoAnalista = document.getElementById('btnNovoAnalista');
+  if(btnNovoAnalista) btnNovoAnalista.addEventListener('click', ()=>{
+    openModal(`<h3>Novo Analista</h3>
+      <div class="field"><label>Nome completo</label><input id="fName"></div>
+      <div class="field"><label>E-mail</label><input id="fEmail"></div>
+      <div class="field"><label>Senha inicial</label><input id="fPass" value="demo123"></div>
+      <div class="field"><label>Dias de trabalho</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${WEEKDAYS.map(d=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;background:var(--bg-2);padding:5px 8px;border-radius:6px;"><input type="checkbox" class="fDia" value="${d}" ${['seg','ter','qua','qui','sex'].includes(d)?'checked':''}> ${d}</label>`).join('')}
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field"><label>Jornada — início</label><select id="fJHi">${HOURS.map(h=>`<option ${h==='19:00'?'selected':''}>${h}</option>`).join('')}</select></div>
+        <div class="field"><label>Jornada — fim</label><select id="fJHf">${HOURS.map(h=>`<option ${h==='01:00'?'selected':''}>${h}</option>`).join('')}</select></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-brand" id="confirmNovoAnalista">Cadastrar</button>
+      </div>`);
+    document.getElementById('confirmNovoAnalista').onclick = ()=>{
+      const name = document.getElementById('fName').value.trim();
+      const email = document.getElementById('fEmail').value.trim();
+      const pass = document.getElementById('fPass').value.trim() || 'demo123';
+      const dias = Array.from(document.querySelectorAll('.fDia:checked')).map(c=>c.value);
+      const horaInicio = document.getElementById('fJHi').value;
+      const horaFim = document.getElementById('fJHf').value;
+      if(!name) return;
+      DB.users.push({id:uid('u_ana'), role:'analista', name, email, pass, supervisorId:session.userId, active:true, jornada:{dias, horaInicio, horaFim}});
+      saveDB(); closeModal(); renderMain();
+    };
+  });
+
+  // Supervisor: nova base mestra
+  const btnNovaMestra = document.getElementById('btnNovaMestra');
+  if(btnNovaMestra) btnNovaMestra.addEventListener('click', ()=>{
+    const myAnalistas = DB.users.filter(u=>u.role==='analista' && u.supervisorId===session.userId);
+    openModal(`<h3>Nova entrada — Base Mestra</h3>
+      <div class="field"><label>Analista (titular)</label><select id="fAnalista">${myAnalistas.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')}</select></div>
+      <div class="field"><label>Operação (sigla)</label><input id="fOp" placeholder="ex: COL-A"></div>
+      <div class="field"><label>Ciclo</label><input id="fCiclo" value="T3"></div>
+      <div class="grid-2"><div class="field"><label>Início</label><select id="fHi">${HOURS.map(h=>`<option>${h}</option>`).join('')}</select></div>
+      <div class="field"><label>Fim</label><select id="fHf">${HOURS.map(h=>`<option>${h}</option>`).join('')}</select></div></div>
+      <div class="grid-2"><div class="field"><label>Vigência início</label><input type="date" id="fDi" value="${todayISO()}"></div>
+      <div class="field"><label>Vigência fim</label><input type="date" id="fDf" value="2026-12-31"></div></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-brand" id="confirmNovaMestra">Salvar</button>
+      </div>`);
+    document.getElementById('confirmNovaMestra').onclick = ()=>{
+      const analistaId = document.getElementById('fAnalista').value;
+      const titular = userById(analistaId).name;
+      DB.baseMestra.push({id:uid('bm'), analistaId, operacao:document.getElementById('fOp').value||'OP', ciclo:document.getElementById('fCiclo').value,
+        horaInicio:document.getElementById('fHi').value, horaFim:document.getElementById('fHf').value, titular,
+        dataInicio:document.getElementById('fDi').value, dataFim:document.getElementById('fDf').value});
+      saveDB(); closeModal(); renderMain();
+    };
+  });
+
+  // Supervisor: nova cobertura avulsa
+  const btnNovaSuplencia = document.getElementById('btnNovaSuplencia');
+  if(btnNovaSuplencia) btnNovaSuplencia.addEventListener('click', ()=>{
+    const myAnalistas = DB.users.filter(u=>u.role==='analista' && u.supervisorId===session.userId);
+    openModal(`<h3>Nova cobertura avulsa</h3>
+      <div class="field"><label>Analista original (quem está sendo coberto)</label><select id="fOrig">${myAnalistas.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')}</select></div>
+      <div class="field"><label>Suplente (nome)</label><input id="fSup"></div>
+      <div class="field"><label>Operação</label><input id="fOp2" placeholder="ex: COL-B"></div>
+      <div class="grid-2"><div class="field"><label>Início</label><select id="fHi2">${HOURS.map(h=>`<option>${h}</option>`).join('')}</select></div>
+      <div class="field"><label>Fim</label><select id="fHf2">${HOURS.map(h=>`<option>${h}</option>`).join('')}</select></div></div>
+      <div class="field"><label>Data da cobertura</label><input type="date" id="fData" value="${todayISO()}"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-brand" id="confirmNovaSuplencia">Salvar</button>
+      </div>`);
+    document.getElementById('confirmNovaSuplencia').onclick = ()=>{
+      const analistaOriginalId = document.getElementById('fOrig').value;
+      DB.suplencias.push({id:uid('sp'), operacao:document.getElementById('fOp2').value||'OP', ciclo:'T3',
+        horaInicio:document.getElementById('fHi2').value, horaFim:document.getElementById('fHf2').value,
+        suplente:document.getElementById('fSup').value||'—', dataCobertura:document.getElementById('fData').value, analistaOriginalId});
+      saveDB(); closeModal(); renderMain();
+    };
+  });
+
+  // Grade do Dia: filtros
+  main.querySelectorAll('[data-gradefilter]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{ uiState.gradeFilters[sel.dataset.gradefilter] = sel.value; renderMain(); });
+  });
+
+  // Programação (Supervisor): filtro analista + data
+  const progSel = document.getElementById('progAnalistaSel');
+  if(progSel) progSel.addEventListener('change', ()=>{ uiState.progAnalista = progSel.value; renderMain(); });
+  const progDate = document.getElementById('progDateSel');
+  if(progDate) progDate.addEventListener('change', ()=>{ uiState.progDate = progDate.value; renderMain(); });
+
+  // Sugerir Suplente
+  const btnGerarSugestao = document.getElementById('btnGerarSugestao');
+  if(btnGerarSugestao) btnGerarSugestao.addEventListener('click', ()=>{
+    const myAnalistas = DB.users.filter(u=>u.role==='analista' && u.supervisorId===session.userId);
+    const analistaId = document.getElementById('sugAnalista').value;
+    const data = document.getElementById('sugData').value;
+    const tipo = document.getElementById('sugTipo').value;
+    const bms = DB.baseMestra.filter(b=>b.analistaId===analistaId && data>=b.dataInicio && data<=b.dataFim);
+    const items = bms.map(bm=>{
+      const candidatos = candidatosParaSlot(myAnalistas, analistaId, bm, data);
+      return { bmId: bm.id, candidatos, chosenId: candidatos[0]?.id || '' };
+    });
+    uiState.sugerir = { analistaId, data, tipo, items };
+    renderMain();
+  });
+  main.querySelectorAll('[data-sugerir-idx]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const idx = parseInt(sel.dataset.sugerirIdx,10);
+      uiState.sugerir.items[idx].chosenId = sel.value;
+    });
+  });
+  const btnConfirmarSugestao = document.getElementById('btnConfirmarSugestao');
+  if(btnConfirmarSugestao) btnConfirmarSugestao.addEventListener('click', ()=>{
+    const st = uiState.sugerir;
+    let count=0;
+    st.items.forEach(it=>{
+      if(!it.chosenId) return;
+      const bm = DB.baseMestra.find(b=>b.id===it.bmId);
+      DB.ausencias.push({id:uid('af'), analistaId:st.analistaId, baseMestraId:bm.id, operacao:bm.operacao, ciclo:bm.ciclo,
+        horaInicio:bm.horaInicio, horaFim:bm.horaFim, data:st.data, tipo:st.tipo, suplenteId:it.chosenId});
+      count++;
+    });
+    saveDB();
+    uiState.sugerir = null;
+    renderMain();
+    alert(`${count} operação(ões) coberta(s) com sucesso.`);
+  });
+
+  // Reuniões
+  const btnNovaReuniao = document.getElementById('btnNovaReuniao');
+  if(btnNovaReuniao) btnNovaReuniao.addEventListener('click', ()=>{
+    const myAnalistas = DB.users.filter(u=>u.role==='analista' && u.supervisorId===session.userId);
+    openModal(`<h3>Nova reunião</h3>
+      <div class="field"><label>Tipo</label><select id="fRTipo"><option value="grupo">Grupo</option><option value="individual">Individual</option></select></div>
+      <div class="field"><label>Título</label><input id="fRTitulo" placeholder="ex: Alinhamento semanal"></div>
+      <div class="grid-2"><div class="field"><label>Data</label><input type="date" id="fRData" value="${todayISO()}"></div>
+      <div class="field"><label>Hora</label><select id="fRHora">${HOURS.map(h=>`<option>${h}</option>`).join('')}</select></div></div>
+      <div class="field" id="fRAnalistaWrap" style="display:none;"><label>Analista</label><select id="fRAnalista">${myAnalistas.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')}</select></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-brand" id="confirmNovaReuniao">Agendar</button>
+      </div>`);
+    const tipoSel = document.getElementById('fRTipo');
+    const wrap = document.getElementById('fRAnalistaWrap');
+    tipoSel.addEventListener('change', ()=>{ wrap.style.display = tipoSel.value==='individual' ? 'block':'none'; });
+    document.getElementById('confirmNovaReuniao').onclick = ()=>{
+      const tipo = tipoSel.value;
+      const analistaIds = tipo==='individual' ? [document.getElementById('fRAnalista').value] : [];
+      DB.reunioes.push({id:uid('rn'), tipo, titulo:document.getElementById('fRTitulo').value||'Reunião', data:document.getElementById('fRData').value,
+        hora:document.getElementById('fRHora').value, analistaIds, supervisorId:session.userId, criadoPor:session.name});
+      saveDB(); closeModal(); renderMain();
+    };
+  });
+
+  // Plantão
+  const btnNovoPlantao = document.getElementById('btnNovoPlantao');
+  if(btnNovoPlantao) btnNovoPlantao.addEventListener('click', ()=>{
+    openModal(`<h3>Definir plantão na minha ausência</h3>
+      <div class="field"><label>Data da ausência</label><input type="date" id="fPData" value="${todayISO()}"></div>
+      <div class="field"><label>Cargo do plantonista</label><select id="fPRole"><option>Supervisor</option><option>Analista</option><option>Coordenador</option></select></div>
+      <div class="field"><label>Nome do plantonista</label><input id="fPNome" placeholder="ex: Thiago Barros"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-brand" id="confirmNovoPlantao">Salvar</button>
+      </div>`);
+    document.getElementById('confirmNovoPlantao').onclick = ()=>{
+      DB.plantoes.push({id:uid('pl'), supervisorAusenteId:session.userId, data:document.getElementById('fPData').value,
+        coberturaRole:document.getElementById('fPRole').value, coberturaNome:document.getElementById('fPNome').value||'—'});
+      saveDB(); closeModal(); renderMain();
+    };
+  });
+
+  // Supervisor: Base Mestra — baixar modelo CSV
+  const btnBaixarModeloMestra = document.getElementById('btnBaixarModeloMestra');
+  if(btnBaixarModeloMestra) btnBaixarModeloMestra.addEventListener('click', ()=>{
+    const myAnalistas = DB.users.filter(u=>u.role==='analista' && u.supervisorId===session.userId);
+    const exemplo = myAnalistas[0]?.name || 'Nome do Analista';
+    downloadCSV('modelo_base_mestra.csv',
+      ['analista','operacao','ciclo','hora_inicio','hora_fim','data_inicio','data_fim'],
+      [exemplo,'COL-A','T3','19:00','23:00', todayISO(), '2026-12-31']);
+  });
+  const fileImportMestra = document.getElementById('fileImportMestra');
+  if(fileImportMestra) fileImportMestra.addEventListener('change', async ()=>{
+    const file = fileImportMestra.files[0]; if(!file) return;
+    const myAnalistas = DB.users.filter(u=>u.role==='analista' && u.supervisorId===session.userId);
+    const text = await readFileAsText(file);
+    const rows = parseCSV(text);
+    let ok=0, fail=0;
+    rows.forEach(r=>{
+      const a = findAnalistaByName(myAnalistas, r.analista);
+      if(!a || !r.operacao || !r.hora_inicio || !r.hora_fim){ fail++; return; }
+      DB.baseMestra.push({id:uid('bm'), analistaId:a.id, operacao:r.operacao, ciclo:r.ciclo||'T3',
+        horaInicio:r.hora_inicio, horaFim:r.hora_fim, titular:a.name,
+        dataInicio:r.data_inicio||todayISO(), dataFim:r.data_fim||'2026-12-31'});
+      ok++;
+    });
+    saveDB(); fileImportMestra.value=''; renderMain();
+    alert(`Importação concluída: ${ok} entrada(s) adicionada(s)${fail?`, ${fail} linha(s) ignorada(s) (analista ou campos não reconhecidos)`:''}.`);
+  });
+
+  // Supervisor: Coberturas avulsas — baixar modelo CSV
+  const btnBaixarModeloSuplencia = document.getElementById('btnBaixarModeloSuplencia');
+  if(btnBaixarModeloSuplencia) btnBaixarModeloSuplencia.addEventListener('click', ()=>{
+    const myAnalistas = DB.users.filter(u=>u.role==='analista' && u.supervisorId===session.userId);
+    const exemplo = myAnalistas[0]?.name || 'Nome do Analista Original';
+    downloadCSV('modelo_coberturas_avulsas.csv',
+      ['analista_original','suplente','operacao','ciclo','hora_inicio','hora_fim','data_cobertura'],
+      [exemplo,'Nome do Suplente','COL-B','T3','19:00','23:00', todayISO()]);
+  });
+  const fileImportSuplencia = document.getElementById('fileImportSuplencia');
+  if(fileImportSuplencia) fileImportSuplencia.addEventListener('change', async ()=>{
+    const file = fileImportSuplencia.files[0]; if(!file) return;
+    const myAnalistas = DB.users.filter(u=>u.role==='analista' && u.supervisorId===session.userId);
+    const text = await readFileAsText(file);
+    const rows = parseCSV(text);
+    let ok=0, fail=0;
+    rows.forEach(r=>{
+      const orig = findAnalistaByName(myAnalistas, r.analista_original);
+      if(!orig || !r.suplente || !r.operacao || !r.hora_inicio || !r.hora_fim || !r.data_cobertura){ fail++; return; }
+      DB.suplencias.push({id:uid('sp'), operacao:r.operacao, ciclo:r.ciclo||'T3',
+        horaInicio:r.hora_inicio, horaFim:r.hora_fim, suplente:r.suplente,
+        dataCobertura:r.data_cobertura, analistaOriginalId:orig.id});
+      ok++;
+    });
+    saveDB(); fileImportSuplencia.value=''; renderMain();
+    alert(`Importação concluída: ${ok} cobertura(s) adicionada(s)${fail?`, ${fail} linha(s) ignorada(s)`:''}.`);
+  });
+
+  // Supervisor: Folgas/Férias por operação — baixar modelo CSV
+  const btnBaixarModeloAusencia = document.getElementById('btnBaixarModeloAusencia');
+  if(btnBaixarModeloAusencia) btnBaixarModeloAusencia.addEventListener('click', ()=>{
+    const myAnalistas = DB.users.filter(u=>u.role==='analista' && u.supervisorId===session.userId);
+    const exemplo = myAnalistas[0]?.name || 'Nome do Analista';
+    const opExemplo = DB.baseMestra.find(b=>b.analistaId===myAnalistas[0]?.id)?.operacao || 'COL-A';
+    downloadCSV('modelo_folgas_ferias_por_operacao.csv',
+      ['analista','operacao','data','tipo','suplente'],
+      [exemplo, opExemplo, todayISO(), 'folga', 'Nome do Suplente']);
+  });
+  const fileImportAusencia = document.getElementById('fileImportAusencia');
+  if(fileImportAusencia) fileImportAusencia.addEventListener('change', async ()=>{
+    const file = fileImportAusencia.files[0]; if(!file) return;
+    const myAnalistas = DB.users.filter(u=>u.role==='analista' && u.supervisorId===session.userId);
+    const text = await readFileAsText(file);
+    const rows = parseCSV(text);
+    let ok=0, fail=0;
+    rows.forEach(r=>{
+      const a = findAnalistaByName(myAnalistas, r.analista);
+      const tipo = (r.tipo||'').trim().toLowerCase();
+      if(!a || !r.data || !r.operacao || (tipo!=='folga' && tipo!=='ferias')){ fail++; return; }
+      const bm = DB.baseMestra.find(b=>b.analistaId===a.id && b.operacao===r.operacao && r.data>=b.dataInicio && r.data<=b.dataFim);
+      if(!bm){ fail++; return; }
+      const suplenteMatch = myAnalistas.find(x=>x.name.trim().toLowerCase()===(r.suplente||'').trim().toLowerCase());
+      DB.ausencias.push({id:uid('af'), analistaId:a.id, baseMestraId:bm.id, operacao:bm.operacao, ciclo:bm.ciclo,
+        horaInicio:bm.horaInicio, horaFim:bm.horaFim, data:r.data, tipo, suplenteId:suplenteMatch?.id||null, suplenteNome:suplenteMatch?null:(r.suplente||'')});
+      ok++;
+    });
+    saveDB(); fileImportAusencia.value=''; renderMain();
+    alert(`Importação concluída: ${ok} registro(s) adicionado(s)${fail?`, ${fail} linha(s) ignorada(s) (analista/operação não encontrados)`:''}.`);
+  });
+
+  // Supervisor: editar recado enviado
+  main.querySelectorAll('[data-editar-recado]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const r = DB.recados.find(x=>x.id===btn.dataset.editarRecado);
+      openModal(`<h3>Editar comunicado</h3>
+        <div class="field"><label>Mensagem</label><textarea id="fEditRecado" rows="4" style="width:100%;background:var(--bg-2);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:10px;">${escapeHtml(r.texto)}</textarea></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-brand" id="confirmEditRecado">Salvar</button>
+        </div>`);
+      document.getElementById('confirmEditRecado').onclick = ()=>{
+        const novo = document.getElementById('fEditRecado').value.trim();
+        if(novo){ r.texto = novo; r.editado = true; saveDB(); closeModal(); renderMain(); }
+      };
+    });
+  });
+  // Supervisor: excluir recado enviado
+  main.querySelectorAll('[data-excluir-recado]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(!confirm('Excluir este comunicado? Ele deixará de aparecer para os analistas.')) return;
+      DB.recados = DB.recados.filter(x=>x.id!==btn.dataset.excluirRecado);
+      saveDB(); renderMain();
+    });
+  });
+
+  // Supervisor: enviar recado
+  const btnEnviarRecado = document.getElementById('btnEnviarRecado');
+  if(btnEnviarRecado) btnEnviarRecado.addEventListener('click', ()=>{
+    const txt = document.getElementById('transmMsg').value.trim();
+    if(!txt) return;
+    DB.recados.push({id:uid('rc'), from:`${session.name} (Supervisor)`, to:'all_ana_'+session.userId, texto:txt, ts:Date.now(), lidoPor:[]});
+    saveDB(); renderMain();
+  });
+
+  // Reset password (supervisor/coordenador use)
+  main.querySelectorAll('[data-resetpw]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const u = userById(btn.dataset.resetpw);
+      openModal(`<h3>Resetar senha — ${u.name}</h3>
+        <div class="field"><label>Nova senha</label><input id="fNewPass" value="demo123"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button class="btn" onclick="closeModal()">Cancelar</button>
+          <button class="btn btn-brand" id="confirmReset">Salvar</button>
+        </div>`);
+      document.getElementById('confirmReset').onclick = ()=>{
+        u.pass = document.getElementById('fNewPass').value || 'demo123';
+        saveDB(); closeModal();
+      };
+    });
+  });
+
+  // Coordenador: novo supervisor
+  const btnNovoSupervisor = document.getElementById('btnNovoSupervisor');
+  if(btnNovoSupervisor) btnNovoSupervisor.addEventListener('click', ()=>{
+    openModal(`<h3>Novo Supervisor</h3>
+      <div class="field"><label>Nome completo</label><input id="fName2"></div>
+      <div class="field"><label>E-mail</label><input id="fEmail2"></div>
+      <div class="field"><label>Senha inicial</label><input id="fPass2" value="demo123"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-brand" id="confirmNovoSupervisor">Cadastrar</button>
+      </div>`);
+    document.getElementById('confirmNovoSupervisor').onclick = ()=>{
+      const name = document.getElementById('fName2').value.trim();
+      if(!name) return;
+      DB.users.push({id:uid('u_sup'), role:'supervisor', name, email:document.getElementById('fEmail2').value.trim(), pass:document.getElementById('fPass2').value||'demo123', coordenadorId:session.userId, active:true});
+      saveDB(); closeModal(); renderMain();
+    };
+  });
+}
+
+/* ---------------- BOOT ---------------- */
+(async function boot(){
+  await loadDB();
+  initLogin();
+})();
+</script>
+</body>
+</html>
